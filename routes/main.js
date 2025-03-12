@@ -2,7 +2,6 @@ const router = require("express").Router();
 const faker = require("faker");
 const Product = require("../models/product");
 const { ReviewSchema, Review } = require("../models/review");
-const product = require("../models/product");
 
 router.get("/generate-fake-data", (req, res, next) => {
   for (let i = 0; i < 90; i++) {
@@ -14,7 +13,9 @@ router.get("/generate-fake-data", (req, res, next) => {
     product.image = "https://via.placeholder.com/250?text=Product+Image";
 
     product.save((err) => {
-      if (err) throw err;
+      if (err) {
+        res.status(500).send({ error: "Server error" });
+      }
     });
   }
   res.end();
@@ -42,7 +43,7 @@ router.get("/products/:product", (req, res, next) => {
   const productId = req.params.product;
   Product.findById(productId).exec((err, product) => {
     if (err) {
-      return next(err);
+      res.status(500).send({ error: "Server error" });
     }
 
     if (!product) {
@@ -59,7 +60,7 @@ router.get("/products/:product/reviews", (req, res) => {
 
   Product.findById(productId).exec((err, product) => {
     if (err) {
-      return next(err);
+      res.status(500).send({ error: "Server error" });
     }
 
     if (!product) {
@@ -86,7 +87,7 @@ router.post("/products", (req, res) => {
 
   product.save((err) => {
     if (err) {
-      throw err;
+      res.status(500).send({ error: "Server error" });
     }
     res.status(201).send({ message: "Product added", product: product });
   });
@@ -112,7 +113,7 @@ router.post("/products/:product/reviews", (req, res) => {
 
     product.save((err) => {
       if (err) {
-        throw err;
+        res.status(500).send({ error: "Server error" });
       }
 
       res.status(201).send({
@@ -128,7 +129,7 @@ router.delete("/products/:product", (req, res) => {
 
   Product.findByIdAndDelete(productId).exec((err, product) => {
     if (err) {
-      throw err;
+      res.status(500).send({ error: "Server error" });
     }
     if (!product) {
       res.status(404).send({ error: "No product found" });
@@ -138,7 +139,34 @@ router.delete("/products/:product", (req, res) => {
 });
 
 router.delete("/reviews/:review", (req, res) => {
-  // Deletes a review by ID
+  const reviewId = req.params.review;
+  const productId = req.body.product;
+
+  Product.findById(productId).exec((err, product) => {
+    if (err) {
+      res.status(500).send({ error: "Server error" });
+    }
+
+    const review = product.reviews.findIndex((review) => {
+      return review._id.toString() === reviewId;
+    });
+
+    if (review === -1) {
+      res.status(404).send({ error: "No review found" });
+    } else {
+      product.reviews.splice(review, 1);
+    }
+
+    product.save((err) => {
+      if (err) {
+        res
+          .status(500)
+          .send({ error: "Server error: Failed to delete review" });
+      }
+
+      res.status(204);
+    });
+  });
 });
 
 module.exports = router;
