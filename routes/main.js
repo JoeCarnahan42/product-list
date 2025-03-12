@@ -2,6 +2,7 @@ const router = require("express").Router();
 const faker = require("faker");
 const Product = require("../models/product");
 const { ReviewSchema, Review } = require("../models/review");
+const product = require("../models/product");
 
 router.get("/generate-fake-data", (req, res, next) => {
   for (let i = 0; i < 90; i++) {
@@ -92,7 +93,6 @@ router.post("/products", (req, res) => {
 });
 
 router.post("/products/:product/reviews", (req, res) => {
-  // Creates new review in DB by adding it to correct products review array
   const productId = req.params.product;
 
   const review = new Review({
@@ -124,7 +124,17 @@ router.post("/products/:product/reviews", (req, res) => {
 });
 
 router.delete("/products/:product", (req, res) => {
-  // Deletes product by ID
+  const productId = req.params.product;
+
+  Product.findByIdAndDelete(productId).exec((err, product) => {
+    if (err) {
+      throw err;
+    }
+    if (!product) {
+      res.status(404).send({ error: "No product found" });
+    }
+    res.status(200).send({ message: "Product deleted", product });
+  });
 });
 
 router.delete("/reviews/:review", (req, res) => {
