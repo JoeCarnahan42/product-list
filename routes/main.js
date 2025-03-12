@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const faker = require("faker");
 const Product = require("../models/product");
-const Review = require("../models/review");
+const { ReviewSchema, Review } = require("../models/review");
 
 router.get("/generate-fake-data", (req, res, next) => {
   for (let i = 0; i < 90; i++) {
@@ -76,17 +76,51 @@ router.get("/products/:product/reviews", (req, res) => {
 });
 
 router.post("/products", (req, res) => {
-  // Creates new product in DB
   const product = new Product();
 
-  product.category = JSON.stringify(req.body.category);
-  product.name = JSON.stringify(req.body.name);
+  product.category = req.body.category;
+  product.name = req.body.name;
   product.price = parseInt(req.body.price);
-  product.reviews = [];
+  product.image = "https://via.placeholder.com/250?text=Product+Image";
+
+  product.save((err) => {
+    if (err) {
+      throw err;
+    }
+    res.status(201).send({ message: "Product added", product: product });
+  });
 });
 
 router.post("/products/:product/reviews", (req, res) => {
   // Creates new review in DB by adding it to correct products review array
+  const productId = req.params.product;
+
+  const review = new Review({
+    userName: req.body.userName,
+    text: req.body.text,
+  });
+
+  Product.findById(productId).exec((err, product) => {
+    if (err) {
+      return next(err);
+    }
+
+    if (!product) {
+      res.status(400).send({ error: "Product not found" });
+    }
+    product.reviews.push(review);
+
+    product.save((err) => {
+      if (err) {
+        throw err;
+      }
+
+      res.status(201).send({
+        message: "Review added",
+        product: product,
+      });
+    });
+  });
 });
 
 router.delete("/products/:product", (req, res) => {
