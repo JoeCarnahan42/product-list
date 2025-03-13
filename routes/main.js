@@ -24,22 +24,32 @@ router.get("/generate-fake-data", (req, res, next) => {
 router.get("/products", (req, res, next) => {
   const perPage = 9;
 
-  // return the first page by default
   const page = parseInt(req.query.page) || 1;
 
-  Product.find({})
+  const filter = {};
+  const sort = {};
+  if (req.query.category) filter.category = req.query.category;
+  if (req.query.query) filter.name = req.query.query;
+  console.log(filter);
+  if (req.query.price === "lowest") sort.price = 1;
+  if (req.query.price === "highest") sort.price = -1;
+
+  Product.find(filter)
+    .sort(sort)
     .skip(perPage * page - perPage)
     .limit(perPage)
     .exec((err, products) => {
-      Product.count().exec((err, count) => {
+      if (err) return next(err);
+
+      Product.countDocuments(filter).exec((err, count) => {
         if (err) return next(err);
 
-        res.send(products);
+        res.status(200).send({ products, totalCount: count });
       });
     });
 });
 
-router.get("/products/:product", (req, res, next) => {
+router.get("/products/:product", (req, res) => {
   const productId = req.params.product;
   Product.findById(productId).exec((err, product) => {
     if (err) {
@@ -53,7 +63,7 @@ router.get("/products/:product", (req, res, next) => {
   });
 });
 
-router.get("/products/:product/reviews", (req, res) => {
+router.get("/products/:product/reviews", (req, res, next) => {
   const productId = req.params.product;
   const perPage = 4;
   const page = parseInt(req.query.page) || 1;
@@ -72,8 +82,11 @@ router.get("/products/:product/reviews", (req, res) => {
       startingIndex,
       startingIndex + perPage
     );
+    Product.countDocuments().exec((err, count) => {
+      if (err) return next(err);
 
-    res.send(reviews);
+      res.send({ reviews, totalCount: count });
+    });
   });
 });
 
@@ -103,7 +116,7 @@ router.post("/products/:product/reviews", (req, res) => {
 
   Product.findById(productId).exec((err, product) => {
     if (err) {
-      return next(err);
+      res.status(500).send({ error: "Server error" });
     }
 
     if (!product) {
@@ -164,7 +177,7 @@ router.delete("/reviews/:review", (req, res) => {
           .send({ error: "Server error: Failed to delete review" });
       }
 
-      res.status(204);
+      res.status(200).send({ message: "Review Deleted" });
     });
   });
 });
