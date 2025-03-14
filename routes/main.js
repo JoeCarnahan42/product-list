@@ -10,7 +10,7 @@ router.get("/generate-fake-data", (req, res, next) => {
     product.category = faker.commerce.department();
     product.name = faker.commerce.productName();
     product.price = faker.commerce.price();
-    product.image = "https://via.placeholder.com/250?text=Product+Image";
+    product.image = "https://ui-avatars.com/api/?name=Product&size=50";
 
     product.save((err) => {
       if (err) {
